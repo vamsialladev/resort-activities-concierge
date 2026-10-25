@@ -22,7 +22,7 @@ jobs:
           ruff format --check .
       - name: Tests (coverage gate 80%; SQLite, the model replaced, no secrets)
         run: python -m pytest -q --cov --cov-report=term-missing --cov-fail-under=80
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: .cache/fastembed
           key: fastembed-bge-small-en-v1.5
