@@ -202,8 +202,10 @@ docker run --rm -p 8501:8501 --env-file .env resort-concierge
    ANTHROPIC_API_KEY = "sk-ant-..."
    DATABASE_URL = "postgresql://...neon.tech/neondb?sslmode=require"
    STAFF_PASSWORD = "a long random password"
-   APP_URL = "https://your-app.streamlit.app"
    ```
+
+   Optional: `APP_URL`, the address Streamlit Cloud gives the app, so room QR codes point to it (without it they
+   use the page's own address).
 
 4. Deploy. The app creates its tables and the schedule on the first visit. The first visit after a quiet spell
    wakes Neon and Streamlit (about 30 seconds).
