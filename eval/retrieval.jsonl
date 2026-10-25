@@ -1,0 +1,36 @@
+{"id": "q01", "property": "beach-resort", "query": "Can my 3 year old go to the kids club?", "expected": "Kids Club Policy - Beach Resort > Ages and supervision"}
+{"id": "q02", "property": "beach-resort", "query": "who signs the children in and out", "expected": "Kids Club Policy - Beach Resort > Drop-off and pick-up"}
+{"id": "q03", "property": "beach-resort", "query": "my son has a nut allergy, is the kids club ok", "expected": "Kids Club Policy - Beach Resort > Health and allergies"}
+{"id": "q04", "property": "beach-resort", "query": "does the kids club cost anything", "expected": "Kids Club Policy - Beach Resort > Price"}
+{"id": "q05", "property": "beach-resort", "query": "what should my daughter bring to kids club", "expected": "Kids Club Policy - Beach Resort > What to bring"}
+{"id": "q06", "property": "beach-resort", "query": "how much is a massage", "expected": "Palm Spa - Beach Resort > Treatments and prices"}
+{"id": "q07", "property": "beach-resort", "query": "is there an age limit for the spa", "expected": "Palm Spa - Beach Resort > Age"}
+{"id": "q08", "property": "beach-resort", "query": "what if I cancel my spa appointment late", "expected": "Palm Spa - Beach Resort > Cancellation"}
+{"id": "q09", "property": "beach-resort", "query": "when is the spa open", "expected": "Palm Spa - Beach Resort > Opening hours"}
+{"id": "q10", "property": "beach-resort", "query": "pool opening times", "expected": "Guest FAQ - Beach Resort > Pools"}
+{"id": "q11", "property": "beach-resort", "query": "do kids need life jackets on the boat", "expected": "Guest FAQ - Beach Resort > Sunset cruise"}
+{"id": "q12", "property": "beach-resort", "query": "minimum age for snorkeling", "expected": "Guest FAQ - Beach Resort > Snorkelling"}
+{"id": "q13", "property": "beach-resort", "query": "where do I get beach towels", "expected": "Guest FAQ - Beach Resort > Towels"}
+{"id": "q14", "property": "beach-resort", "query": "do children eat for less at high tea", "expected": "Guest FAQ - Beach Resort > Dining with children"}
+{"id": "q15", "property": "beach-resort", "query": "how does a booking request work", "expected": "Activity Booking Requests > How a request works"}
+{"id": "q16", "property": "beach-resort", "query": "when will I be charged for an activity", "expected": "Activity Booking Requests > Payment"}
+{"id": "q17", "property": "beach-resort", "query": "can I cancel an activity for free", "expected": "Activity Booking Requests > Cancellations"}
+{"id": "q18", "property": "beach-resort", "query": "what happens if it rains", "expected": "Activity Booking Requests > Weather"}
+{"id": "q19", "property": "mountain-lodge", "query": "youngest age for nature explorers", "expected": "Kids Club Policy - Mountain Lodge > Ages and supervision"}
+{"id": "q20", "property": "mountain-lodge", "query": "what time does kids club end", "expected": "Kids Club Policy - Mountain Lodge > Drop-off and pick-up"}
+{"id": "q21", "property": "mountain-lodge", "query": "what do kids need to wear for the kids club", "expected": "Kids Club Policy - Mountain Lodge > What to bring"}
+{"id": "q22", "property": "mountain-lodge", "query": "how long is the hike", "expected": "Guest FAQ - Mountain Lodge > Guided trek"}
+{"id": "q23", "property": "mountain-lodge", "query": "do I need hiking boots", "expected": "Guest FAQ - Mountain Lodge > Guided trek"}
+{"id": "q24", "property": "mountain-lodge", "query": "altitude sickness", "expected": "Guest FAQ - Mountain Lodge > Altitude"}
+{"id": "q25", "property": "mountain-lodge", "query": "is stargazing cancelled when cloudy", "expected": "Guest FAQ - Mountain Lodge > Stargazing"}
+{"id": "q26", "property": "mountain-lodge", "query": "hot tub age", "expected": "Guest FAQ - Mountain Lodge > Hot tub"}
+{"id": "q27", "property": "mountain-lodge", "query": "can we bring our dog", "expected": "Guest FAQ - Mountain Lodge > Dogs"}
+{"id": "q28", "property": "mountain-lodge", "query": "price of a hot stone massage", "expected": "Cedar Spa - Mountain Lodge > Treatments and prices"}
+{"id": "q29", "property": "mountain-lodge", "query": "spa cancellation", "expected": "Cedar Spa - Mountain Lodge > Cancellation"}
+{"id": "q30", "property": "mountain-lodge", "query": "is the activity charged to my room", "expected": "Activity Booking Requests > Payment"}
+{"id": "p31", "property": "beach-resort", "query": "my little one is allergic to peanuts", "expected": "Kids Club Policy - Beach Resort > Health and allergies", "note": "paraphrase, added after the first BM25/hybrid measurement"}
+{"id": "p32", "property": "beach-resort", "query": "what if we just don't turn up", "expected": "Activity Booking Requests > Cancellations", "note": "paraphrase, added after the first BM25/hybrid measurement"}
+{"id": "p33", "property": "mountain-lodge", "query": "can I bring my pup", "expected": "Guest FAQ - Mountain Lodge > Dogs", "note": "paraphrase, added after the first BM25/hybrid measurement"}
+{"id": "p34", "property": "mountain-lodge", "query": "I feel dizzy and out of breath up here", "expected": "Guest FAQ - Mountain Lodge > Altitude", "note": "paraphrase, added after the first BM25/hybrid measurement"}
+{"id": "p35", "property": "beach-resort", "query": "is the evening sail safe for a five year old", "expected": "Guest FAQ - Beach Resort > Sunset cruise", "note": "paraphrase, added after the first BM25/hybrid measurement"}
+{"id": "p36", "property": "beach-resort", "query": "my child had a temperature yesterday", "expected": "Kids Club Policy - Beach Resort > Health and allergies", "note": "paraphrase, added after the first BM25/hybrid measurement"}
