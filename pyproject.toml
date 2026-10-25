@@ -1,0 +1,26 @@
+[project]
+name = "resort-activities-concierge"
+version = "1.0.0"
+description = "Stage 6: a resort activities concierge with a schedule, an agent that sends booking requests, and a staff side"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Vamsi Alla" }]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"app.py" = ["E402"]
+"src/concierge/seed.py" = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.coverage.run]
+source = ["src/concierge", "eval", "scripts", "pages", "app"]
+omit = ["scripts/make_captions.py", "scripts/record_demo.py"]
