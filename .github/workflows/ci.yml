@@ -35,7 +35,7 @@ jobs:
       - name: "Red-team gate: shared corpus + the concierge's cases through the real defences (free; fails on any new miss)"
         run: python scripts/run_redteam.py
       - name: Dependency audit
-        run: pip-audit -r requirements.txt
+        run: pip-audit -r requirements.txt -r requirements-agents.txt
       - name: SBOM (CycloneDX) of the installed runtime
         run: |
           pip install "cyclonedx-bom~=7.1"

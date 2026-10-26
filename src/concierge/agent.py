@@ -1,4 +1,4 @@
-"""The concierge agent: Claude Haiku 5.5 in a manual tool-use loop over the five tools, with every step recorded.
+"""The concierge agent: Claude Haiku 5.5 in a manual tool-use loop over its tools, with every step recorded.
 
 One message from the guest:
 1. If it leans on an earlier turn ("what about the afternoon?"), one short call rewrites it into a standalone
@@ -36,6 +36,9 @@ How you work:
   Ages and supervision]. If the passages don't cover it, say you don't know and suggest the front desk.
 - For hotel-wide policies outside activities (pets, check-in and check-out times, parking, Wi-Fi, the loyalty
   programme), call hotel_policy and cite its cite_as the same way.
+- For requests that need hotel staff rather than activities (a room change, a complaint, billing, a transfer, a
+  special arrangement), call guest_services with the request. If handed_off is true, say guest services will review
+  it and reply, with the reference; promise nothing. If it falls back, suggest the front desk.
 - When you suggest a kids club session, also call search_faq for that property's kids club policy and cite what
   matters (ages, drop-off, what to bring).
 - Booking: you can only send a request, which staff approve. When you suggest something, offer to request it.

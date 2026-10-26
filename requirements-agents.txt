@@ -1,0 +1,4 @@
+# Optional: the guest-services hand-off over A2A (src/concierge/a2a_client.py). Streamlit Cloud doesn't install it:
+# the live demo has no A2A server to reach, so the tool takes its fallback there. Docker and CI install it.
+-r requirements.txt
+a2a-sdk~=1.2.3

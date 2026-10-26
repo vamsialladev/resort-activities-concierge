@@ -1,4 +1,4 @@
-"""The concierge's five tools: plain functions over the database and the FAQ index, plus their JSON schemas.
+"""The concierge's tools: plain functions over the database and the FAQ index, plus their JSON schemas.
 
 The agent can look things up and create a booking REQUEST. It can't confirm, charge, refund or give anything for
 free: a request is always PENDING until a person on the Staff page approves it. `create_booking_request` also
@@ -14,7 +14,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
 
-from concierge import ap2_sandbox, config, mcp_tools, retrieval
+from concierge import a2a_client, ap2_sandbox, config, mcp_tools, retrieval
 from concierge.db import activities, booking_requests, stays
 
 TIME_WINDOWS = {
@@ -239,7 +239,15 @@ def hotel_policy(ctx: ToolContext, question: str) -> dict:
     return mcp_tools.hotel_policy(ctx.property, question)
 
 
+def guest_services(ctx: ToolContext, request: str) -> dict:
+    """Hand a non-activity request to the stage 2 Guest Request Agent over A2A (src/concierge/a2a_client.py)."""
+    if not (request or "").strip():
+        raise ToolError("request is empty")
+    return a2a_client.hand_off(ctx.property, request)
+
+
 FUNCTIONS = {
+    "guest_services": guest_services,
     "hotel_policy": hotel_policy,
     "search_activities": search_activities,
     "check_availability": check_availability,
@@ -325,6 +333,19 @@ SCHEMAS = [
             "type": "object",
             "properties": {"question": {"type": "string"}},
             "required": ["question"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
+    {
+        "name": "guest_services",
+        "description": "Pass a request that isn't about activities and needs hotel staff (a room change, a complaint, "
+        "a billing question, an airport transfer, a special arrangement) to the hotel's guest services agent, over "
+        "A2A. Staff review it and reply. Returns whether it was handed off and a reference, or a fallback.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"request": {"type": "string", "description": "The guest's request in their words"}},
+            "required": ["request"],
             "additionalProperties": False,
         },
         "strict": True,
