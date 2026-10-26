@@ -41,6 +41,7 @@ RETRIEVAL = os.getenv("RETRIEVAL", "hybrid")  # hybrid (BM25 + embeddings, RRF) 
 EMBED_CACHE_DIR = Path(os.getenv("EMBED_CACHE_DIR", ROOT / ".cache" / "fastembed"))
 TOP_K = int(os.getenv("TOP_K", "4"))
 MAX_QUESTIONS_PER_SESSION = int(os.getenv("MAX_QUESTIONS_PER_SESSION", "25"))
+GUESS_DELAY_S = float(os.getenv("GUESS_DELAY_S", "1.0"))  # after a wrong staff password (tests set 0)
 RATE_LIMIT_PER_MINUTE = int(os.getenv("RATE_LIMIT_PER_MINUTE", "6"))
 DAILY_QUESTION_CAP = int(os.getenv("DAILY_QUESTION_CAP", "400"))
 DAILY_COST_CAP_USD = _float("DAILY_COST_CAP_USD", "1.50")
@@ -65,7 +66,9 @@ def database_url() -> str:
 
 
 def staff_password() -> str:
-    return _secret("STAFF_PASSWORD")
+    """The Staff page is this app's Admin page: ADMIN_PASSWORD, like every hotel app; STAFF_PASSWORD (the stage 6
+    deploy steps) still works. Neither set = no Staff page at all."""
+    return _secret("ADMIN_PASSWORD") or _secret("STAFF_PASSWORD")
 
 
 def today() -> date:

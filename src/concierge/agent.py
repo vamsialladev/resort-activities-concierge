@@ -18,6 +18,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
 import anthropic
+from hotelplatform import tracing
 
 from concierge import config, rewrite, tools
 
@@ -74,6 +75,7 @@ class Turn:
     usage: dict = field(default_factory=lambda: {"input_tokens": 0, "output_tokens": 0, "calls": 0})
     seconds: float = 0.0
     stop: str = ""  # end_turn | max_turns
+    tool_texts: list = field(default_factory=list)  # every tool result as text: what the output check grounds on
 
 
 def make_client():
@@ -111,6 +113,19 @@ def summarize(name: str, result: dict) -> dict:
     return result
 
 
+def _set(span, **attrs) -> None:
+    """Tracing never breaks a turn: no span (evals, tests) or an odd response object is fine."""
+    if span is not None:
+        try:
+            span.set(**attrs)
+        except Exception:  # noqa: BLE001
+            pass
+
+
+def _usage(message, name: str):
+    return getattr(getattr(message, "usage", None), name, None)
+
+
 def _record(turn: Turn, name: str, inp: dict, out: dict, start: float) -> Step:
     step = Step(name, inp, out, round(time.perf_counter() - start, 3))
     turn.steps.append(step)
@@ -137,6 +152,8 @@ def respond(
     if not (tools.guest_said_yes(message) and len(message.split()) <= 6):
         t = time.perf_counter()
         rw = rewrite.standalone(message, history, client=client)
+        if (trace := tracing.current()) is not None:  # the shared ops trace; None in evals and tests
+            trace.record("rewrite", (time.perf_counter() - t) * 1000, method=rw.method, question=rw.question)
         if rw.method != "none":
             turn.usage["input_tokens"] += rw.usage["input_tokens"]
             turn.usage["output_tokens"] += rw.usage["output_tokens"]
@@ -161,19 +178,24 @@ def respond(
         ]
     messages.append({"role": "user", "content": question})
     parts: list[str] = []
-    for _ in range(MAX_TURNS):
-        with client.messages.stream(
-            model=config.LLM_MODEL,
-            max_tokens=config.LLM_MAX_TOKENS,
-            system=system_prompt(ctx, room),
-            tools=tools.SCHEMAS,
-            messages=messages,
-            output_config={"effort": config.LLM_EFFORT},
-        ) as stream:
+    for model_turn in range(1, MAX_TURNS + 1):
+        with (
+            tracing.span("model_call", turn=model_turn, model=config.LLM_MODEL) as span,
+            client.messages.stream(
+                model=config.LLM_MODEL,
+                max_tokens=config.LLM_MAX_TOKENS,
+                system=system_prompt(ctx, room),
+                tools=tools.SCHEMAS,
+                messages=messages,
+                output_config={"effort": config.LLM_EFFORT},
+            ) as stream,
+        ):
             for text in stream.text_stream:
                 parts.append(text)
                 yield text
             final = stream.get_final_message()
+            _set(span, tokens_in=_usage(final, "input_tokens"), tokens_out=_usage(final, "output_tokens"),
+                 stop_reason=getattr(final, "stop_reason", None))  # fmt: skip
         turn.usage["input_tokens"] += final.usage.input_tokens
         turn.usage["output_tokens"] += final.usage.output_tokens
         turn.usage["calls"] += 1
@@ -185,7 +207,10 @@ def respond(
         results = []
         for use in uses:
             t = time.perf_counter()
-            result = tools.call(ctx, use.name, dict(use.input))
+            with tracing.span(f"tool:{use.name}", args=dict(use.input)) as span:
+                result = tools.call(ctx, use.name, dict(use.input))
+                _set(span, ok="error" not in result, result=summarize(use.name, result))
+            turn.tool_texts.append(json.dumps(result, ensure_ascii=False, default=str)[:8000])
             if use.name == "search_faq" and "passages" in result:
                 turn.sources += [p["cite_as"] for p in result["passages"]]
                 turn.faq_empty = turn.faq_empty or not result["passages"]

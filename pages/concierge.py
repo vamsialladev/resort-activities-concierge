@@ -4,8 +4,9 @@ import time
 
 import anthropic
 import streamlit as st
+from hotelplatform import jsonlog
 
-from concierge import agent, analytics, chats, config, limits, suggest, tools, ui
+from concierge import agent, analytics, chats, config, limits, ops, suggest, tools, ui
 
 ctx = ui.context()
 engine = ui.engine()
@@ -90,10 +91,27 @@ updates()
 
 
 def answer(message: str):
+    """One guest message = one trace (hotel-ai-platform): input check, rewrite, each model turn and tool call,
+    output check. The reference is shown if anything fails."""
+    with ops.start(visitor) as trace:
+        _answer(message, trace)
+
+
+def _answer(message: str, trace):
     reason = limits.blocked(engine, s.times, s.asked, time.time())
     if reason:
         st.info(reason, icon=":material/hourglass:")
+        ops.finish(trace, agent.Turn(message, prop), status="capped", error_type="limit")
         return
+    verdict = ops.check_message(message)  # injection, data requests, card numbers: before the rewrite and model
+    if not verdict.allowed:
+        with st.chat_message("user"):
+            st.markdown(message)
+        with st.chat_message("assistant"):
+            st.markdown(verdict.message)
+        ops.finish(trace, agent.Turn(message, prop), status="blocked", error_type=verdict.reason)
+        return
+    message_for_model = verdict.text  # contact details replaced, planted sentences cut out
     s.asked += 1
     s.times = [t for t in s.times if time.time() - t < 60] + [time.time()]
     if not s.get("conversation"):
@@ -108,7 +126,7 @@ def answer(message: str):
             status = st.status("Working on it...", expanded=False)
             st.write_stream(
                 agent.respond(
-                    message,
+                    message_for_model,
                     tctx,
                     history,
                     on_step=lambda step: status.write(f"✓ {step.name}"),
@@ -121,15 +139,25 @@ def answer(message: str):
             anthropic.APIConnectionError,
             anthropic.APITimeoutError,
             anthropic.APIStatusError,
-        ):
-            st.error(FRIENDLY_ERROR, icon=":material/cloud_off:")
+        ) as exc:
+            st.error(f"{FRIENDLY_ERROR} Reference: {trace.reference}", icon=":material/cloud_off:")
+            jsonlog.exception(exc, trace_id=trace.trace_id, where="concierge")
+            timeout = isinstance(exc, anthropic.APITimeoutError)
+            ops.finish(trace, turn, status="timeout" if timeout else "error", error_type=type(exc).__name__)
             return
-        except Exception:  # noqa: BLE001 - never show a trace to a guest
+        except Exception as exc:  # noqa: BLE001 - never show a stack trace to a guest
             st.error(
-                "Something went wrong on my side. Please try asking another way.",
+                f"Something went wrong on my side. Please try asking another way. Reference: {trace.reference}",
                 icon=":material/error:",
             )
+            jsonlog.exception(exc, trace_id=trace.trace_id, where="concierge")
+            ops.finish(trace, turn, status="error", error_type=type(exc).__name__)
             return
+    checked = ops.check_answer(turn.answer, turn.tool_texts, message_for_model)
+    if checked.text != turn.answer:  # a promise, a prompt leak or contact details: what's saved and shown instead
+        turn.answer = checked.text
+    ops.finish(trace, turn, status="ok" if checked.allowed else "blocked",
+               error_type=None if checked.allowed else checked.reason)  # fmt: skip
     limits.record(engine, turn.usage)
     chats.add_message(engine, s.conversation, "user", message, {"understood_as": turn.understood_as})
     chats.add_message(
