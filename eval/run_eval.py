@@ -1,4 +1,4 @@
-"""Labelled eval for the concierge agent (Claude Haiku 5.5 with the five tools), plus a free retrieval eval.
+"""Labelled eval for the concierge agent (Claude Haiku 5.5 with its tools), plus a free retrieval eval.
 
 Each case: a property, a message (sometimes after earlier turns), and deterministic checks:
 - tools: these tools were called; no_tools: none was; args: a tool was called with one of the allowed values
@@ -12,6 +12,7 @@ Each case: a property, a message (sometimes after earlier turns), and determinis
 
 python -m eval.run_eval --runs 3 --price-in 0.1 --price-out 0.5                  # dev, saves a report
 python -m eval.run_eval --split heldout --runs 3 --price-in 0.1 --price-out 0.5
+python -m eval.run_eval --split protocols --runs 3 --price-in 0.1 --price-out 0.5  # MCP, A2A, AP2 tools
 python -m eval.run_eval --rescore eval/reports/agent-<date>-dev.jsonl            # re-grade a saved run, no API
 python -m eval.run_eval --retrieval [--hybrid]                                    # free: FAQ retrieval recall
 
@@ -227,7 +228,7 @@ def rescore(path: Path, write: bool = False, price_in=None, price_out=None) -> i
     print(f"re-scored {len(rows)} answers, {len(changed)} verdicts changed; pass {passed}/{len(rows)}")
     if write and changed:
         runs = max(r["run"] for r in rows)
-        split = "heldout" if "heldout" in path.stem else "dev"
+        split = next((x for x in ("heldout", "protocols") if x in path.stem), "dev")
         text = report(split, summarize(rows, runs, price_in, price_out), runs, price_in, price_out)
         text += f"\nRe-scored without the model after a grader fix: {len(changed)} verdict(s) changed "
         text += f"({', '.join(changed)}).\n"
@@ -270,7 +271,7 @@ def retrieval_eval(hybrid: bool = False) -> int:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--split", default="dev", choices=["dev", "heldout", "all"])
+    parser.add_argument("--split", default="dev", choices=["dev", "heldout", "protocols", "all"])
     parser.add_argument("--runs", type=int, default=1)
     parser.add_argument("--price-in", type=float, default=None)
     parser.add_argument("--price-out", type=float, default=None)
