@@ -153,8 +153,9 @@ def prepare(engine: Engine, request_id: str, activity, party_size: int, guest_wo
             cart=json.dumps(cart), payment=json.dumps(payment), total_usd=f"{total:.2f}", status="AWAITING_GUEST",
             created_at=now.isoformat(),
         ))  # fmt: skip
+    note = "The guest approves it with the Approve payment button under your answer (a typed reply doesn't approve it)."
     return {"mandate_id": mandate_id, "status": "AWAITING_GUEST", "total_usd": total, "merchant": MERCHANT,
-            "expires": expiry, "note": f"The guest approves the payment in the chat. {SANDBOX_NOTE}"}  # fmt: skip
+            "expires": expiry, "note": f"{note} {SANDBOX_NOTE}"}  # fmt: skip
 
 
 def get(engine: Engine, mandate_id: str):

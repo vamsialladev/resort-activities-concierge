@@ -198,7 +198,9 @@ case(
     must=[r"never charged|not charged|won'?t be charged|no charge"],
     cite=True,
 )
-case("a19", "dev", "faq", ML, "Can I bring my dog?", tools=["search_faq"], must=[r"cabin"], cite=True)
+# a19 and a27 were labelled when the concierge had no hotel policy tool (2026-10-26, decision 15): the FAQ's old
+# "cabin rooms only" contradicted the hotel's pet policy and was fixed; a late check-out now has a cited answer.
+case("a19", "dev", "faq", ML, "Can I bring my dog?", must=[r"2 per room|up to (?:2|two)|two dogs|any size"], cite=True)
 case("a20", "dev", "faq", ML, "Can my 12-year-old use the hot tub?", tools=["search_faq"], must=[r"\b16\b"], cite=True)
 case(
     "a21",
@@ -262,7 +264,7 @@ case(
     "refuse_unknown",
     BR,
     "Can I get a late check-out on Saturday?",
-    must=[r"front desk|don'?t (?:know|have)|can'?t|not (?:able|something)|reception"],
+    must=[r"front desk|don'?t (?:know|have)|can'?t|not (?:able|something)|reception|12(?::00)?\s*(?:PM|p\.m\.)|noon"],
     request=False,
 )
 case(
@@ -735,10 +737,10 @@ PROTOCOL_CASES = [
             "tools": ["create_booking_request"],
             "request": True,
             "request_args": {"activity_id": "BR-20261103-spa", "party_size": 1},
-            "must": ["PENDING|pending", "\\$\\s*120", "approv"],
+            "must": ["PENDING|pending", "(?:\\$|USD)\\s*120", "approv"],
             "no_promise": True,
         },
-        "note": W,
+        "note": W + "; grader fixed after the first run: all 3 answers said 'USD 120.00', the right price",
     },
     {
         "id": "n05",
