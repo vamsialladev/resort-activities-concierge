@@ -165,6 +165,7 @@ the concierge suggests.
 | **PII and tenant isolation** | **Built:** visitors are a random ID, no accounts; every stored message, title and analytics event is redacted first (stage 1's redaction); stay lookups need the reference and the last name and never return the name; staff see request details, not chats. Searches and tools are filtered by property. **Roadmap:** `hotel_group_id` on every table with row-level security in Postgres for more than one hotel group; retention (delete chats after 30 days, as stages 1–2 do). |
 | **10K → 1M users** | **What breaks first:** Streamlit Community Cloud's single process and ~1 GB of memory (the embedding model takes about 260 MB), and the Neon free tier's connection limit. **Roadmap:** the same app on a container service with several replicas behind Neon's pooler (limits already live in the database, so they hold across replicas), embeddings computed once and stored in pgvector, schedule reads cached for a minute, and per-property daily budgets. |
 | **Monitoring, alerting, hallucination and off-brand detection** | **Built:** every answer keeps its steps, sources and cost; analytics show unanswered questions (the FAQ gap list) and ignored activities; the eval's re-score gate and retrieval gate run in CI; times and prices come from tool results, not the model. **Roadmap:** an alert when the unanswered share or the share of answers without a tool call rises, a daily check that compares prices in answers with the database, and staff thumbs-down on the request list feeding new eval cases. |
+| **Observability** | **Built (1.1.0):** every guest message is one trace (OpenTelemetry-shaped IDs) with a span per step: input guardrails → follow-up rewrite → each model turn (tokens, stop reason) → each tool call (arguments, ok, a short result) → output check. Rows go to the shared `ops_request_log` / `ops_trace_span` tables in the same Neon database (`app` column), PII removed before the write, batched off the request path, 30-day retention. Errors show "Reference: 4f1c9a2e"; Staff → **Traces** finds it and draws the waterfall. Structured JSON startup logs; keep-awake visits (`?source=keepawake`) stop before the database is touched, so Neon can sleep. **Roadmap:** an OpenTelemetry exporter to a real collector. |
 | **Failure modes and rollback** | **Built:** Neon asleep → "Waking up the database" and retries; model down or slow → a friendly message, the schedule still works; embeddings unavailable → BM25 only; caps hit → a polite message before any model call; a request with too few places is refused in code. Rollback: revert the commit (Streamlit Cloud redeploys); the schema only adds tables, so old code still runs on it. |
 
 ## Run locally
@@ -281,8 +282,20 @@ saved agent runs, pip-audit, lychee and gitleaks. Tests never read `DATABASE_URL
 
 ## Security
 
-[SECURITY.md](SECURITY.md): threat model and OWASP Top 10 for LLM applications mapping. Keys and the database URL
-only in `.env` or the host's secrets; `.env` is git- and Docker-ignored.
+**Guardrails (1.1.0, shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)):**
+before the model, injection sentences are cut out (and a message that's nothing but an attack is blocked), requests
+for other guests' data, roles or bulk actions are blocked, card numbers are blocked and contact details replaced.
+After the model, a promise the turn's tool results don't support ("I've booked it") is replaced. **Red team**
+([docs/RED_TEAM.md](docs/RED_TEAM.md), in CI): the shared corpus passes 48/48 through the concierge (one documented
+difference: answers name sources in a caption, so no numbered citation is required). The concierge's own 18
+held-out cases passed 15/18 on the first run. The 3 that get past the input check (a manager-sounding request,
+"everyone who booked", a paraphrased jailbreak) are listed as known gaps; no tool can approve a request or list other
+guests, so they end there. The tool layer stops a request the guest didn't agree to, one for more people than places
+left, and another hotel's activity.
+
+[SECURITY.md](SECURITY.md): STRIDE threat model, OWASP Top 10 for LLM applications mapping, data classification
+and incident response. Keys and the database URL only in `.env` or the host's secrets; `.env` is git- and
+Docker-ignored.
 
 ## Documentation
 

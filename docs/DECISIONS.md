@@ -113,3 +113,15 @@ Each one: context, decision, tradeoff, result.
 - **Tradeoff:** a few small files can be left in the temp folder.
 - **Result:** the re-run finished; the crashed run saved nothing (results are written at the end), so no number
   from it is reported.
+
+## 11. Shared guardrails and tracing; the Staff page is this app's Admin page (2026-10-25)
+- **Context:** the final plan adds guardrails, a red team, tracing and one ops log to every hotel app, and an Admin
+  page (for the concierge, the Staff page) behind `ADMIN_PASSWORD` with a lockout.
+- **Decision:** wire hotel-ai-platform v0.1.2 in `src/concierge/ops.py`; the rewrite, each model turn and each tool
+  call are spans. The Staff page reads `ADMIN_PASSWORD` (the older `STAFF_PASSWORD` still works), uses the shared
+  5-try lockout, stays out of the menu until staff sign in at `/staff`, doesn't exist without a password, and gets a
+  Traces tab. The FAQ quarantine also uses the shared patterns.
+- **Trade-off:** keep-awake visits stop before the database is touched (so Neon sleeps), which means a keep-awake
+  visit doesn't warm the schedule either.
+- **Result:** red team: shared 48/48; own held-out 15/18, three listed gaps that the tools already stop. Saved eval
+  answers: the output check changes 0 of 228; the FAQ passages the model reads are identical before and after.
