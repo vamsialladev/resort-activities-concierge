@@ -1,0 +1,6 @@
+{
+  "_why": "The concierge answers from activity listings and FAQ passages and names its sources in a caption, not with numbered citation markers, so the shared output check doesn't require a citation (rt38 comes out 'allow'). Grounding is checked instead: promises must appear in the turn's tool results.",
+  "expect": {
+    "rt38": "allow"
+  }
+}

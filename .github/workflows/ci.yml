@@ -32,8 +32,18 @@ jobs:
         run: |
           python -m eval.run_eval --rescore eval/reports/agent-2026-10-25-dev.jsonl
           python -m eval.run_eval --rescore eval/reports/agent-2026-10-25-heldout.jsonl
+      - name: "Red-team gate: shared corpus + the concierge's cases through the real defences (free; fails on any new miss)"
+        run: python scripts/run_redteam.py
       - name: Dependency audit
         run: pip-audit -r requirements.txt
+      - name: SBOM (CycloneDX) of the installed runtime
+        run: |
+          pip install "cyclonedx-bom~=7.1"
+          cyclonedx-py environment --output-format JSON --output-file sbom.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: sbom.json
 
   links:
     name: Link check (lychee)
