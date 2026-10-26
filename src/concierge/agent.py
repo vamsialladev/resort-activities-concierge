@@ -21,6 +21,7 @@ import anthropic
 from hotelplatform import tracing
 
 from concierge import config, rewrite, tools
+from concierge.agui import APPROVAL_REQUESTED, RunEvents
 
 MAX_TURNS = 6
 HISTORY_TURNS = 6
@@ -33,6 +34,8 @@ How you work:
 - For rules (ages, what to bring, cancellations, prices of treatments, safety), call search_faq and cite each
   passage you use by copying its cite_as value exactly in square brackets, e.g. [Kids Club Policy - Beach Resort >
   Ages and supervision]. If the passages don't cover it, say you don't know and suggest the front desk.
+- For hotel-wide policies outside activities (pets, check-in and check-out times, parking, Wi-Fi, the loyalty
+  programme), call hotel_policy and cite its cite_as the same way.
 - When you suggest a kids club session, also call search_faq for that property's kids club policy and cite what
   matters (ages, drop-off, what to bring).
 - Booking: you can only send a request, which staff approve. When you suggest something, offer to request it.
@@ -76,6 +79,9 @@ class Turn:
     seconds: float = 0.0
     stop: str = ""  # end_turn | max_turns
     tool_texts: list = field(default_factory=list)  # every tool result as text: what the output check grounds on
+    agui: RunEvents = field(
+        default_factory=RunEvents
+    )  # the run as AG-UI events; the page's timeline is drawn from them
 
 
 def make_client():
@@ -105,6 +111,8 @@ def summarize(name: str, result: dict) -> dict:
                 for a in result["activities"]
             ],
         }
+    if name == "hotel_policy":
+        return {"passages": [p["cite_as"] for p in result["passages"]], "via": result.get("via")}
     if name == "search_faq":
         return {
             "passages": [p["cite_as"] for p in result["passages"]],
@@ -147,6 +155,8 @@ def respond(
     start = time.perf_counter()
     history = (history or [])[-HISTORY_TURNS:]
     ctx.last_user_message = message
+    ev = turn.agui
+    ev.run_started(message)
 
     question = message
     if not (tools.guest_said_yes(message) and len(message.split()) <= 6):
@@ -155,6 +165,8 @@ def respond(
         if (trace := tracing.current()) is not None:  # the shared ops trace; None in evals and tests
             trace.record("rewrite", (time.perf_counter() - t) * 1000, method=rw.method, question=rw.question)
         if rw.method != "none":
+            began_ms = int((time.time() - (time.perf_counter() - t)) * 1000)  # when the rewrite started, wall clock
+            ev.step("rewrite_follow_up", began_ms, {"standalone": rw.question})
             turn.usage["input_tokens"] += rw.usage["input_tokens"]
             turn.usage["output_tokens"] += rw.usage["output_tokens"]
             turn.usage["calls"] += 1
@@ -192,6 +204,7 @@ def respond(
         ):
             for text in stream.text_stream:
                 parts.append(text)
+                ev.text(text)
                 yield text
             final = stream.get_final_message()
             _set(span, tokens_in=_usage(final, "input_tokens"), tokens_out=_usage(final, "output_tokens"),
@@ -205,19 +218,25 @@ def respond(
             break
         messages.append({"role": "assistant", "content": final.content})
         results = []
+        ev.text_end()
         for use in uses:
             t = time.perf_counter()
+            started_ms = int(time.time() * 1000)
             with tracing.span(f"tool:{use.name}", args=dict(use.input)) as span:
                 result = tools.call(ctx, use.name, dict(use.input))
                 _set(span, ok="error" not in result, result=summarize(use.name, result))
             turn.tool_texts.append(json.dumps(result, ensure_ascii=False, default=str)[:8000])
-            if use.name == "search_faq" and "passages" in result:
+            if use.name in ("search_faq", "hotel_policy") and "passages" in result:
                 turn.sources += [p["cite_as"] for p in result["passages"]]
                 turn.faq_empty = turn.faq_empty or not result["passages"]
             if use.name == "search_activities" and "activities" in result:
                 turn.activities_seen += [a["name"] for a in result["activities"]]
             if use.name == "create_booking_request" and "request_id" in result:
                 turn.requests.append(result["request_id"])
+            ev.tool(use.name, dict(use.input), summarize(use.name, result), started_ms)
+            payment = result.get("payment") if isinstance(result, dict) else None
+            if payment and payment.get("status") == "AWAITING_GUEST":  # AP2 sandbox: the guest decides, not the model
+                ev.custom(APPROVAL_REQUESTED, {"request_id": result["request_id"], **payment})
             step = _record(
                 turn,
                 f"Tool: {use.name}",
@@ -246,6 +265,8 @@ def respond(
         yield note
     turn.answer = "".join(parts).strip()
     turn.seconds = time.perf_counter() - start
+    ev.state({"requests": turn.requests, "sources": list(dict.fromkeys(turn.sources)), "stop": turn.stop})
+    ev.finished({"answer_chars": len(turn.answer)})
 
 
 def run(message: str, ctx: tools.ToolContext, history=None, client=None, room: str = "") -> Turn:
