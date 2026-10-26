@@ -265,9 +265,11 @@ def respond(
         turn.stop = "max_turns"
         note = "\n\nI stopped after several steps; could you ask that a bit more narrowly?"
         parts.append(note)
+        ev.text(note)
         yield note
     turn.answer = "".join(parts).strip()
     turn.seconds = time.perf_counter() - start
+    ev.text_end()  # the answer's message is closed before the final state, as AG-UI clients expect
     ev.state({"requests": turn.requests, "sources": list(dict.fromkeys(turn.sources)), "stop": turn.stop})
     ev.finished({"answer_chars": len(turn.answer)})
 
