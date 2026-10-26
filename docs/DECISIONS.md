@@ -125,3 +125,54 @@ Each one: context, decision, tradeoff, result.
   visit doesn't warm the schedule either.
 - **Result:** red team: shared 48/48; own held-out 15/18, three listed gaps that the tools already stop. Saved eval
   answers: the output check changes 0 of 228; the FAQ passages the model reads are identical before and after.
+
+## 12. Hotel-wide policy over MCP, as the guest role (2026-10-26)
+- **Context:** guests ask the concierge about pets, check-out, parking and the loyalty programme. Those rules live in
+  the hotel group's documents, served by the stage 7 tool server. Copying them into the concierge's FAQ would drift.
+- **Decision:** a `hotel_policy` tool calls `search_policy` on hotel-tools-mcp over an MCP session (in-memory
+  transport, the server in-process, because Streamlit Community Cloud runs one service), as the **guest** role, so
+  the server's role checks, tenant scope, rate limit and audit log apply. Passages come back quarantined and are
+  cited like FAQ passages.
+- **Trade-off:** in-process, not over the network: the same code would talk to a remote MCP server, but the demo
+  doesn't show one. The pin is a commit archive until the stage 7 PR is merged and tagged.
+- **Result:** connecting as a guest found a real gap in stage 7: `search_policy` returned a "CONFIDENTIAL - INTERNAL
+  STAFF USE ONLY" passage to guests. Fixed there (hotel-tools-mcp decision 13). It also found my own data
+  contradicting itself: this FAQ said dogs only in cabins, the hotel's pet policy says any size, up to 2 per room.
+  The FAQ now agrees and points to the policy (decision 15).
+
+## 13. Every answer as AG-UI events (2026-10-26)
+- **Context:** the plan asks for AG-UI events for the step timeline.
+- **Decision:** `src/concierge/agui.py` builds each run's events with the official `ag-ui-protocol` types and stores
+  them with the answer; the Steps panel is drawn from them (`agui.timeline`), and guest and staff decisions are
+  CUSTOM events. Schema: [AGUI_EVENTS.md](AGUI_EVENTS.md).
+- **Trade-off:** stored, not streamed: Streamlit can't serve an SSE endpoint. An AG-UI client could replay a run, not
+  watch it live.
+- **Result:** a test that validates every stored event against the official types and checks their order found the
+  answer's text message closing after `STATE_SNAPSHOT`; fixed, and the test fails without the fix.
+
+## 14. AP2 sandbox mandates for paid activities (2026-10-26)
+- **Context:** the plan asks for an AP2 sandbox with a spend limit and a human approval; no real money anywhere.
+- **Decision:** a paid request gets Intent, Cart (signed) and Payment mandates with the official AP2 field names; the
+  total comes from the database; only the guest's button authorises it; staff can't approve the booking before
+  that; $300 a day per conversation; carts expire in 15 minutes. HMAC stand-ins for AP2's signatures. The official
+  SDK isn't installed in the app (exact pins on pydantic and cryptography). [AP2_SANDBOX.md](AP2_SANDBOX.md).
+- **Trade-off:** a sandbox proves the approval flow, not a payment integration.
+- **Result:** red team 11 payment cases, each stopped for the right reason. The control case (a normal approval)
+  first failed and showed that 6 attack cases had "passed" because the activity didn't run that day; the runner now
+  fails a case whose setup fails. The first eval run showed one answer telling the guest to "reply" to approve; the
+  tool's note now names the button.
+
+## 15. Guest-services hand-off over A2A, with a fallback (2026-10-26)
+- **Context:** room moves, complaints and billing belong to the stage 2 Guest Request Agent, which drafts a reply
+  and staff tasks for review.
+- **Decision:** a `guest_services` tool sends the request over A2A (official `a2a-sdk`: agent card, JSON-RPC, bearer
+  token) to stage 2's A2A server, with the property and the guest's words (contact details already replaced), no
+  name or room. The concierge gets back whether it was handed off, a reference and what was understood, never the
+  draft (that's for staff). If `A2A_URL`/`A2A_TOKEN` aren't set, the SDK isn't installed, or the agent fails or
+  times out, the tool returns a fallback and the concierge points to the front desk.
+- **Trade-off:** the free live demo always takes the fallback: Streamlit Community Cloud can't host stage 2's A2A
+  server. `a2a-sdk` is optional (`requirements-agents.txt`), so the live app doesn't install it.
+- **Result:** tested against an in-process A2A server (handed off, failed task, agent down, not configured) and
+  against stage 2's real server app with its process stubbed (right token handed off, wrong token fell back). Two
+  dev labels from before the new tools were updated: a19 (the dog rule above) and a27 (a late check-out now gets a
+  cited policy answer instead of "ask the front desk").

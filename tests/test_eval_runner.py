@@ -114,4 +114,4 @@ def test_case_file_matches_its_generator(tmp_path, monkeypatch):
     saved = [
         json.loads(line) for line in (config.ROOT / "eval" / "cases.jsonl").read_text(encoding="utf-8").splitlines()
     ]
-    assert cases == saved and len(saved) == 76
+    assert cases == saved and len(saved) == 82  # 61 dev, 15 held-out, 6 protocols

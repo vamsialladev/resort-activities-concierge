@@ -32,6 +32,9 @@ jobs:
         run: |
           python -m eval.run_eval --rescore eval/reports/agent-2026-10-25-dev.jsonl
           python -m eval.run_eval --rescore eval/reports/agent-2026-10-25-heldout.jsonl
+          python -m eval.run_eval --rescore eval/reports/agent-2026-10-26-dev-final.jsonl
+          python -m eval.run_eval --rescore eval/reports/agent-2026-10-26-heldout-final.jsonl
+          python -m eval.run_eval --rescore eval/reports/agent-2026-10-26-protocols-final.jsonl
       - name: "Red-team gate: shared corpus + the concierge's cases through the real defences (free; fails on any new miss)"
         run: python scripts/run_redteam.py
       - name: Dependency audit

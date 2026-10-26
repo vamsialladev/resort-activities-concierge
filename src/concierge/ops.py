@@ -20,7 +20,7 @@ from hotelplatform import guardrails, jsonlog, oplog, tracing, version
 from concierge import config
 
 APP = "resort-activities-concierge"
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 ROOT = Path(__file__).resolve().parents[2]
 MONTHLY_COST_CAP_USD = float(os.getenv("MONTHLY_COST_CAP_USD", "15.00"))
 
