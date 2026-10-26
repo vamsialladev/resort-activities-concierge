@@ -117,7 +117,7 @@ Each one: context, decision, tradeoff, result.
 ## 11. Shared guardrails and tracing; the Staff page is this app's Admin page (2026-10-25)
 - **Context:** the final plan adds guardrails, a red team, tracing and one ops log to every hotel app, and an Admin
   page (for the concierge, the Staff page) behind `ADMIN_PASSWORD` with a lockout.
-- **Decision:** wire hotel-ai-platform v0.1.2 in `src/concierge/ops.py`; the rewrite, each model turn and each tool
+- **Decision:** wire hotel-ai-platform v0.1.3 in `src/concierge/ops.py`; the rewrite, each model turn and each tool
   call are spans. The Staff page reads `ADMIN_PASSWORD` (the older `STAFF_PASSWORD` still works), uses the shared
   5-try lockout, stays out of the menu until staff sign in at `/staff`, doesn't exist without a password, and gets a
   Traces tab. The FAQ quarantine also uses the shared patterns.

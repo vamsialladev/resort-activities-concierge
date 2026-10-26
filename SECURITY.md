@@ -34,7 +34,7 @@ Email <vamsialla.dev@gmail.com> with steps to reproduce. Please don't open a pub
 
 ## Guardrails and tracing (1.1.0)
 
-Shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) v0.1.2,
+Shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) v0.1.3,
 wired in `src/concierge/ops.py`. Before the model: injection and jailbreak sentences cut out (blocked when no real
 question is left), data, role and tool-misuse requests blocked, card numbers blocked, contact details replaced.
 After the model: a promise ("I've booked it", "the spa is complimentary") that the turn's tool results don't support
