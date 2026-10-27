@@ -131,19 +131,21 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · decisions: [docs/DE
 | FAQ retrieval, keyword questions (free, CI) | BM25 30/30, hybrid 30/30 | | `python -m eval.run_eval --retrieval --hybrid` |
 | FAQ retrieval, meaning-only paraphrases (free, CI) | BM25 0/6, hybrid **5/6** | | same |
 
-**With the protocol tools (1.2.0, 2026-10-26, 3 runs each).** MCP policy, the A2A hand-off and AP2 payments
+**With the protocol tools (1.2.0, 2026-10-26/27, 3 runs each).** MCP policy, the A2A hand-off and AP2 payments
 added tools, so every set was re-run ([dev](eval/reports/agent-2026-10-26-dev-final.md),
 [held-out](eval/reports/agent-2026-10-26-heldout-final.md), [protocols](eval/reports/agent-2026-10-26-protocols-final.md)):
 
 | | Dev (61 × 3) | Held-out (15 × 3) | Protocols (6 × 3, new) |
 |---|---|---|---|
-| All checks pass | **99%** (181/183) | **93%** (42/45, h11 as before) | **100%** (18/18) |
-| p50 / p95 | 3.73 s / 7.65 s | 3.35 s / 8.36 s | 6.51 s / 9.22 s |
-| Cost per 1,000 messages | $0.76 (was $0.66) | $0.78 (was $0.68) | $1.16 |
+| All checks pass | **100%** (183/183) | **96%** (43/45, h11 in 2 of 3 runs) | **100%** (18/18) |
+| p50 / p95 | 3.19 s / 6.71 s | 3.48 s / 7.94 s | 6.08 s / 9.08 s |
+| Cost per 1,000 messages | $0.76 (was $0.66) | $0.80 (was $0.68) | $1.14 |
 
-The two extra tool definitions cost about $0.10 per 1,000 messages on every question. The dev miss is a23 in 2 of 3
-runs: the schedule already showed one place left, so the model skipped `check_availability` and said, correctly,
-that two people can't go. The first run with the new tools ([as measured](eval/reports/agent-2026-10-26-dev-protocols.md))
+The two extra tool definitions cost about $0.10 per 1,000 messages on every question. These runs used the MCP
+server after its staff-only filter. An earlier full round ran against the server before that fix, which handed the
+concierge staff notes and a confidential events page as "policy": dev 99% (181/183, a23 skipping
+`check_availability` in 2 of 3 runs, answer right), held-out 93%, protocols 100%; kept as `*-unfiltered` reports.
+The first run with the new tools ([as measured](eval/reports/agent-2026-10-26-dev-protocols.md))
 was 97%: the new `hotel_policy` tool answered "Can I bring my dog?" from the hotel's pet policy (any size, up to 2
 per room), and my own FAQ said "cabin rooms only". Two synthetic documents disagreed. The FAQ now matches the hotel
 policy, and two labels written before the tool existed (a19, a27) were updated ([decisions 12-15](docs/DECISIONS.md)).
