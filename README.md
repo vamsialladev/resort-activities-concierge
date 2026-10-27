@@ -4,6 +4,7 @@
 ![Python 3.12](https://img.shields.io/badge/python-3.12-blue)
 [![Ruff](https://img.shields.io/badge/lint-ruff-261230)](https://docs.astral.sh/ruff/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+![coverage gate 80%](https://img.shields.io/badge/coverage%20gate-%E2%89%A580%25-brightgreen)
 
 **A guest scans the QR code in their room, sees what's on today, and asks a concierge that knows the real schedule
 and the resort's rules. It can send a booking request, and a person on staff approves it.**
@@ -195,6 +196,23 @@ the concierge suggests.
 | **Observability** | **Built (1.1.0):** every guest message is one trace (OpenTelemetry-shaped IDs) with a span per step: input guardrails → follow-up rewrite → each model turn (tokens, stop reason) → each tool call (arguments, ok, a short result) → output check. Rows go to the shared `ops_request_log` / `ops_trace_span` tables in the same Neon database (`app` column), PII removed before the write, batched off the request path, 30-day retention. Errors show "Reference: 4f1c9a2e"; Staff → **Traces** finds it and draws the waterfall. Structured JSON startup logs; keep-awake visits (`?source=keepawake`) stop before the database is touched, so Neon can sleep. **Roadmap:** an OpenTelemetry exporter to a real collector. |
 | **Failure modes and rollback** | **Built:** Neon asleep → "Waking up the database" and retries; model down or slow → a friendly message, the schedule still works; embeddings unavailable → BM25 only; caps hit → a polite message before any model call; a request with too few places is refused in code. Rollback: revert the commit (Streamlit Cloud redeploys); the schema only adds tables, so old code still runs on it. |
 
+## Security & guardrails
+
+**Guardrails (1.1.0, shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)):**
+before the model, injection sentences are cut out (and a message that's nothing but an attack is blocked), requests
+for other guests' data, roles or bulk actions are blocked, card numbers are blocked and contact details replaced.
+After the model, a promise the turn's tool results don't support ("I've booked it") is replaced. **Red team**
+([docs/RED_TEAM.md](docs/RED_TEAM.md), in CI): the shared corpus passes 48/48 through the concierge (one documented
+difference: answers name sources in a caption, so no numbered citation is required). The concierge's own 18
+held-out cases passed 15/18 on the first run. The 3 that get past the input check (a manager-sounding request,
+"everyone who booked", a paraphrased jailbreak) are listed as known gaps; no tool can approve a request or list other
+guests, so they end there. The tool layer stops a request the guest didn't agree to, one for more people than places
+left, and another hotel's activity.
+
+[SECURITY.md](SECURITY.md): STRIDE threat model, OWASP Top 10 for LLM applications mapping, data classification
+and incident response. Keys and the database URL only in `.env` or the host's secrets; `.env` is git- and
+Docker-ignored.
+
 ## Run locally
 
 Windows (PowerShell):
@@ -310,23 +328,6 @@ docker run --rm -p 8501:8501 --env-file .env resort-concierge
 
 56 tests, 93% coverage: the schedule and stays, the database retry, every tool (filters, the consent check, capacity, the stay lookup, quarantine), hybrid fusion with a fake embedder, the agent loop with the model replaced, conversations and redaction, staff decisions and the guest notice, analytics, limits, the scripts, the eval grader and runner, and every page via Streamlit AppTest (including the full guest → staff → guest round trip). CI: ruff, pytest with an 80% coverage gate, the retrieval gate (BM25 and hybrid), re-scoring of the
 saved agent runs, pip-audit, lychee and gitleaks. Tests never read `DATABASE_URL` and never call the model.
-
-## Security
-
-**Guardrails (1.1.0, shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)):**
-before the model, injection sentences are cut out (and a message that's nothing but an attack is blocked), requests
-for other guests' data, roles or bulk actions are blocked, card numbers are blocked and contact details replaced.
-After the model, a promise the turn's tool results don't support ("I've booked it") is replaced. **Red team**
-([docs/RED_TEAM.md](docs/RED_TEAM.md), in CI): the shared corpus passes 48/48 through the concierge (one documented
-difference: answers name sources in a caption, so no numbered citation is required). The concierge's own 18
-held-out cases passed 15/18 on the first run. The 3 that get past the input check (a manager-sounding request,
-"everyone who booked", a paraphrased jailbreak) are listed as known gaps; no tool can approve a request or list other
-guests, so they end there. The tool layer stops a request the guest didn't agree to, one for more people than places
-left, and another hotel's activity.
-
-[SECURITY.md](SECURITY.md): STRIDE threat model, OWASP Top 10 for LLM applications mapping, data classification
-and incident response. Keys and the database URL only in `.env` or the host's secrets; `.env` is git- and
-Docker-ignored.
 
 ## Documentation
 
