@@ -1,4 +1,4 @@
-"""The concierge's five tools: plain functions over the database and the FAQ index, plus their JSON schemas.
+"""The concierge's tools: plain functions over the database and the FAQ index, plus their JSON schemas.
 
 The agent can look things up and create a booking REQUEST. It can't confirm, charge, refund or give anything for
 free: a request is always PENDING until a person on the Staff page approves it. `create_booking_request` also
@@ -14,7 +14,7 @@ from datetime import date, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
 
-from concierge import config, retrieval
+from concierge import a2a_client, ap2_sandbox, config, mcp_tools, retrieval
 from concierge.db import activities, booking_requests, stays
 
 TIME_WINDOWS = {
@@ -185,6 +185,10 @@ def create_booking_request(
     avail = check_availability(ctx, activity_id, party_size)
     if not avail["available"]:
         raise ToolError(f"only {avail['spots_left']} places left for {avail['name']}")
+    row = _activity(ctx, activity_id)
+    total = float(row.price_usd) * int(party_size)  # from the database, never from the conversation
+    if total > 0 and ap2_sandbox.spent_today(ctx.engine, ctx.conversation_id) + total > ap2_sandbox.SPEND_LIMIT_USD:
+        raise ToolError(f"not created: over the sandbox spending limit of ${ap2_sandbox.SPEND_LIMIT_USD:.0f} a day")
     rid = f"REQ-{uuid.uuid4().hex[:8].upper()}"
     with ctx.engine.begin() as conn:
         conn.execute(
@@ -208,6 +212,8 @@ def create_booking_request(
         "party_size": int(party_size),
         "price_total_usd": avail["price_total_usd"],
         "note": "Sent to the activities desk. Nothing is booked or charged until staff approve it.",
+        # A paid activity also gets AP2-style mandates; the guest approves the payment in the chat (sandbox).
+        "payment": ap2_sandbox.prepare(ctx.engine, rid, row, party_size, ctx.last_user_message, ctx.conversation_id),
     }
 
 
@@ -226,7 +232,23 @@ def search_faq(ctx: ToolContext, query: str) -> dict:
     }
 
 
+def hotel_policy(ctx: ToolContext, question: str) -> dict:
+    """Hotel-wide policy from the stage 7 MCP server, as the guest role (src/concierge/mcp_tools.py)."""
+    if not (question or "").strip():
+        raise ToolError("question is empty")
+    return mcp_tools.hotel_policy(ctx.property, question)
+
+
+def guest_services(ctx: ToolContext, request: str) -> dict:
+    """Hand a non-activity request to the stage 2 Guest Request Agent over A2A (src/concierge/a2a_client.py)."""
+    if not (request or "").strip():
+        raise ToolError("request is empty")
+    return a2a_client.hand_off(ctx.property, request)
+
+
 FUNCTIONS = {
+    "guest_services": guest_services,
+    "hotel_policy": hotel_policy,
     "search_activities": search_activities,
     "check_availability": check_availability,
     "get_guest_booking": get_guest_booking,
@@ -299,6 +321,31 @@ SCHEMAS = [
                 "stay_ref",
                 "note",
             ],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
+    {
+        "name": "hotel_policy",
+        "description": "Hotel-wide policies outside activities (pets, check-in and check-out times, parking, Wi-Fi, "
+        "the loyalty programme), from the hotel group's tool server over MCP. Returns passages with a cite_as label.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"question": {"type": "string"}},
+            "required": ["question"],
+            "additionalProperties": False,
+        },
+        "strict": True,
+    },
+    {
+        "name": "guest_services",
+        "description": "Pass a request that isn't about activities and needs hotel staff (a room change, a complaint, "
+        "a billing question, an airport transfer, a special arrangement) to the hotel's guest services agent, over "
+        "A2A. Staff review it and reply. Returns whether it was handed off and a reference, or a fallback.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"request": {"type": "string", "description": "The guest's request in their words"}},
+            "required": ["request"],
             "additionalProperties": False,
         },
         "strict": True,

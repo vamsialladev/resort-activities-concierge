@@ -5,7 +5,7 @@ import time
 import streamlit as st
 from hotelplatform import admin_gate, admin_ui
 
-from concierge import analytics, config, ops, qr, staff, ui
+from concierge import analytics, ap2_sandbox, config, ops, qr, staff, ui
 
 ctx = ui.context()
 engine = ui.engine()
@@ -60,6 +60,9 @@ with pending_tab:
                 f"{max(r['capacity'] - r['booked'], 0)} places left · stay {r['stay_ref'] or 'not given'} · "
                 f"requested {r['created_at'][11:16]}"
             )
+            mandate = ap2_sandbox.for_request(engine, r["id"])
+            if mandate is not None:  # AP2 sandbox: staff can approve only after the guest approved the payment
+                left.caption(f"Payment {mandate.id}: {mandate.status} · ${float(mandate.total_usd):.2f} (sandbox)")
             if r["note"]:
                 left.caption(f"Guest note: {r['note']}")
             note = right.text_input("Note to the guest (optional)", key=f"n-{r['id']}")

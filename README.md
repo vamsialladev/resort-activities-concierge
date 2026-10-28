@@ -49,6 +49,11 @@ down. Meanwhile the 10:00 snorkel tour leaves with three empty places because no
 - **Staff.** Password sign-in. Pending requests with approve / decline (approving books the places and tells the
   guest). Analytics from real use: top questions, unanswered questions, activities viewed vs requested, ignored
   activities, peak times. A QR code for any room.
+- **Protocols.** Hotel-wide policy questions (pets, check-out, parking) go to the stage 7 tool server over **MCP**,
+  as the guest role. Requests for hotel staff (a room move, a complaint) go to the stage 2 Guest Request Agent over
+  **A2A**, with a front-desk fallback when it can't be reached (always on the free live demo). Each answer is recorded
+  as **AG-UI** events, and the Steps panel is drawn from them. A paid activity gets **AP2**-style payment mandates
+  that only the guest can approve (sandbox, no real money). [Decisions 12-15](docs/DECISIONS.md).
 - **Guardrails.** The model can't confirm, charge, refund or make anything free. A request needs the guest's own
   "yes" (checked in code). Planted instructions in the documents are removed before the model sees them. Limits per
   visit, per minute and per day, checked before the model is called.
@@ -125,6 +130,28 @@ More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · decisions: [docs/DE
 | Cost per 1,000 messages | $0.66 | $0.68 | same |
 | FAQ retrieval, keyword questions (free, CI) | BM25 30/30, hybrid 30/30 | | `python -m eval.run_eval --retrieval --hybrid` |
 | FAQ retrieval, meaning-only paraphrases (free, CI) | BM25 0/6, hybrid **5/6** | | same |
+
+**With the protocol tools (1.2.0, 2026-10-26/27, 3 runs each).** MCP policy, the A2A hand-off and AP2 payments
+added tools, so every set was re-run ([dev](eval/reports/agent-2026-10-26-dev-final.md),
+[held-out](eval/reports/agent-2026-10-26-heldout-final.md), [protocols](eval/reports/agent-2026-10-26-protocols-final.md)):
+
+| | Dev (61 × 3) | Held-out (15 × 3) | Protocols (6 × 3, new) |
+|---|---|---|---|
+| All checks pass | **100%** (183/183) | **96%** (43/45, h11 in 2 of 3 runs) | **100%** (18/18) |
+| p50 / p95 | 3.19 s / 6.71 s | 3.48 s / 7.94 s | 6.08 s / 9.08 s |
+| Cost per 1,000 messages | $0.76 (was $0.66) | $0.80 (was $0.68) | $1.14 |
+
+The two extra tool definitions cost about $0.10 per 1,000 messages on every question. These runs used the MCP
+server after its staff-only filter. An earlier full round ran against the server before that fix, which handed the
+concierge staff notes and a confidential events page as "policy": dev 99% (181/183, a23 skipping
+`check_availability` in 2 of 3 runs, answer right), held-out 93%, protocols 100%; kept as `*-unfiltered` reports.
+The first run with the new tools ([as measured](eval/reports/agent-2026-10-26-dev-protocols.md))
+was 97%: the new `hotel_policy` tool answered "Can I bring my dog?" from the hotel's pet policy (any size, up to 2
+per room), and my own FAQ said "cabin rooms only". Two synthetic documents disagreed. The FAQ now matches the hotel
+policy, and two labels written before the tool existed (a19, a27) were updated ([decisions 12-15](docs/DECISIONS.md)).
+The protocols split was 83% as measured: my `$120` pattern missed "USD 120.00" ([as measured](eval/reports/agent-2026-10-26-protocols-asmeasured.md)).
+One answer there told the guest to "reply" to approve a payment; the tool's note now names the button, and all three
+final answers do.
 
 The cases are the categories the plan asked for: the must-pass family question, activities with real times, ages
 and prices, FAQ questions with citations, the booking flow (a yes, a no, "book it" without a yes), the stay lookup,
@@ -240,7 +267,7 @@ docker run --rm -p 8501:8501 --env-file .env resort-concierge
 |---|---|---|
 | `ANTHROPIC_API_KEY` | (none) | Needed for the concierge chat |
 | `DATABASE_URL` | (none) | Neon Postgres; without it, `data/concierge.db` (SQLite) |
-| `STAFF_PASSWORD` | (none) | Unlocks the Staff page; without it the page stays locked |
+| `ADMIN_PASSWORD` | (none) | The Staff (Admin) page: 5 wrong tries lock it for 15 minutes; without it the page doesn't exist. `STAFF_PASSWORD` still works |
 | `LLM_MODEL` / `LLM_EFFORT` | `claude-haiku-5-5` / `low` | Model and effort |
 | `RETRIEVAL` | `hybrid` | `hybrid` (BM25 + embeddings, RRF) or `bm25` |
 | `TOP_K` | 4 | Passages per FAQ search |
@@ -251,6 +278,9 @@ docker run --rm -p 8501:8501 --env-file .env resort-concierge
 | `APP_URL` | (the page's address) | Public address used in room QR codes |
 | `DEMO_VIDEO_URL` | (none) | Shows a "Watch the 90-second demo" button |
 | `CONCIERGE_TODAY` / `CONCIERGE_NOW` | (real time) | Pin the date and time (tests and the eval) |
+| `A2A_URL` / `A2A_TOKEN` / `A2A_TIMEOUT_S` | (none) / (none) / 20 | The stage 2 agent's A2A server for the guest_services tool; unset = the tool's fallback (front desk). Needs `requirements-agents.txt` |
+| `SANDBOX_SPEND_LIMIT_USD` | 300 | AP2 sandbox: most a conversation can authorise per day (no real money) |
+| `AP2_SANDBOX_KEY` | (random per process) | Signs the sandbox mandates |
 
 ## Commands
 
@@ -258,7 +288,8 @@ docker run --rm -p 8501:8501 --env-file .env resort-concierge
 |---|---|
 | `streamlit run app.py` | The app |
 | `python scripts/seed.py [--check]` | Create tables and the 14-day schedule (or just report) |
-| `python -m eval.run_eval --runs 3 --price-in 0.1 --price-out 0.5 [--split heldout]` | Agent eval (uses the API) |
+| `python -m eval.run_eval --runs 3 --price-in 0.1 --price-out 0.5 [--split heldout\|protocols]` | Agent eval (uses the API) |
+| `python scripts/run_redteam.py [--report]` | Red-team suite, no API (CI gate) |
 | `python -m eval.run_eval --rescore <saved .jsonl>` | Re-grade a saved run, no API |
 | `python -m eval.run_eval --retrieval [--hybrid]` | FAQ retrieval eval (free) |
 | `python eval/make_cases.py` | Regenerate `eval/cases.jsonl` from the case list |
@@ -301,7 +332,8 @@ Docker-ignored.
 
 [ARCHITECTURE](docs/ARCHITECTURE.md) · [DECISIONS](docs/DECISIONS.md) · [BUSINESS_CASE](docs/BUSINESS_CASE.md) ·
 [VIDEO_SCRIPT](docs/VIDEO_SCRIPT.md) · [VALIDATION_CHECKLIST](docs/VALIDATION_CHECKLIST.md) ·
-[ENGINEERING_LOG](docs/ENGINEERING_LOG.md) · [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md)
+[ENGINEERING_LOG](docs/ENGINEERING_LOG.md) · [RED_TEAM](docs/RED_TEAM.md) · [AGUI_EVENTS](docs/AGUI_EVENTS.md) ·
+[AP2_SANDBOX](docs/AP2_SANDBOX.md) · [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md)
 
 ## Author
 

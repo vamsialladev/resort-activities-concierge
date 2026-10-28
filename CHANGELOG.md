@@ -4,6 +4,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follo
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [1.2.0] - 2026-10-26
+### Added
+- `hotel_policy` tool: hotel-wide policy from the stage 7 MCP server, as the guest role (decision 12).
+- AG-UI events for every answer; the Steps panel is drawn from them; guest and staff decisions as CUSTOM events
+  (decision 13, docs/AGUI_EVENTS.md).
+- AP2 sandbox payment mandates for paid activities: database price, guest approval button, $300 a day per
+  conversation, staff approve only after the guest (decision 14, docs/AP2_SANDBOX.md). No real money.
+- `guest_services` tool: hands staff requests to the stage 2 Guest Request Agent over A2A, with a front-desk
+  fallback (decision 15). Optional `requirements-agents.txt`.
+- 11 AP2 red-team cases; eval split `protocols` (6 cases).
+### Fixed
+- The answer's AG-UI text message now closes before the final state snapshot.
+- The Mountain Lodge FAQ's dog rule ("cabin rooms only") contradicted the hotel's pet policy; it now agrees.
+
 ## [1.1.0] - 2026-10-25
 ### Added
 - Shared guardrails, tracing and ops log from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)

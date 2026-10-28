@@ -5,7 +5,7 @@ import json
 import pytest
 from sqlalchemy import select
 
-from concierge import agent, analytics, chats, config, limits, staff, suggest, tools
+from concierge import agent, analytics, ap2_sandbox, chats, config, limits, staff, suggest, tools
 from concierge.db import activities, events
 from tests.fakes import FakeModel, text, tool
 
@@ -113,7 +113,10 @@ def test_staff_approve_books_the_places_and_tells_the_guest(tctx, engine):
 def test_staff_decline_and_capacity_checks(tctx, engine):
     rid, _ = make_request(tctx)
     assert staff.decide(engine, rid, False)["status"] == "DECLINED"
-    rid2, _ = make_request(tctx, party=1, activity="BR-20261102-spa")
+    rid2, cid2 = make_request(tctx, party=1, activity="BR-20261102-spa")
+    with pytest.raises(staff.DecisionError, match="hasn't approved the payment"):  # paid: the guest approves first
+        staff.decide(engine, rid2, True)
+    ap2_sandbox.decide(engine, ap2_sandbox.for_request(engine, rid2).id, cid2, True)
     with engine.begin() as conn:
         conn.execute(activities.update().where(activities.c.id == "BR-20261102-spa").values(booked=4))
     with pytest.raises(staff.DecisionError, match="places left"):
@@ -169,3 +172,17 @@ def test_suggestions():
     assert suggest.after(turn, set())[0] == "What should the kids bring?"
     turn.requests.append("REQ-1")
     assert suggest.after(turn, {"What happens next with my request?"}) == ["Can I cancel it later?"]
+
+
+def test_hotel_policy_comes_from_the_mcp_server_as_the_guest_role(tctx):
+    from concierge import mcp_tools
+
+    assert set(mcp_tools.tool_names()) == {
+        "search_policy",
+        "lookup_booking",
+        "list_activities",
+        "create_booking_request",
+    }
+    out = tools.call(tctx(), "hotel_policy", {"question": "Can I bring my dog?"})
+    assert out["via"].startswith("MCP") and any("Pets" in p["cite_as"] for p in out["passages"])
+    assert "error" in tools.call(tctx(), "hotel_policy", {"question": " "})

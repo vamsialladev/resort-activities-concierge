@@ -11,7 +11,7 @@ import hmac
 from sqlalchemy import select, update
 from sqlalchemy.engine import Engine
 
-from concierge import chats, config
+from concierge import agui, ap2_sandbox, chats, config
 from concierge.db import activities, booking_requests
 
 
@@ -55,6 +55,9 @@ def decide(engine: Engine, request_id: str, approve: bool, staff_note: str = "")
             raise DecisionError(f"request is already {req.status}")
         act = conn.execute(select(activities).where(activities.c.id == req.activity_id)).first()
         status = "APPROVED" if approve else "DECLINED"
+        mandate = ap2_sandbox.for_request(engine, request_id)
+        if approve and mandate is not None and mandate.status != "AUTHORIZED":
+            raise DecisionError(f"the guest hasn't approved the payment yet ({mandate.status}, sandbox)")
         if approve:
             if act.capacity - act.booked < req.party_size:
                 raise DecisionError(f"only {max(act.capacity - act.booked, 0)} places left")
@@ -82,6 +85,8 @@ def decide(engine: Engine, request_id: str, approve: bool, staff_note: str = "")
             req.conversation_id,
             "notice",
             text,
-            {"request_id": request_id, "status": status},
-        )
+            {"request_id": request_id, "status": status,
+             # the staff decision as an AG-UI CUSTOM event on the guest's thread (docs/AGUI_EVENTS.md)
+             "events": [agui.custom_event(agui.STAFF_DECISION, {"request_id": request_id, "status": status})]},
+        )  # fmt: skip
     return {"request_id": request_id, "status": status, "notice": text}

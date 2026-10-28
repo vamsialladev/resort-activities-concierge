@@ -6,7 +6,7 @@ import anthropic
 import streamlit as st
 from hotelplatform import jsonlog
 
-from concierge import agent, analytics, chats, config, limits, ops, suggest, tools, ui
+from concierge import agent, agui, analytics, ap2_sandbox, chats, config, limits, ops, suggest, tools, ui
 
 ctx = ui.context()
 engine = ui.engine()
@@ -62,12 +62,12 @@ def show(m: dict):
             st.caption("Sources searched: " + " · ".join(dict.fromkeys(meta["sources"])))
         if meta.get("requests"):
             st.caption("Request sent: " + ", ".join(meta["requests"]) + " · PENDING until staff approve it")
-        if meta.get("steps"):
-            label = (
-                f"Steps: {len(meta['steps'])} · {meta.get('seconds', 0):.1f} s · {meta.get('calls', 0)} model call(s)"
-            )
+        # Drawn from the run's AG-UI events when they were saved (newer messages), else the old step list
+        steps = agui.timeline(meta["events"]) if meta.get("events") else meta.get("steps", [])
+        if steps:
+            label = f"Steps: {len(steps)} · {meta.get('seconds', 0):.1f} s · {meta.get('calls', 0)} model call(s)"
             with st.expander(label):
-                show_steps(meta["steps"])
+                show_steps(steps)
 
 
 conv, msgs = chats.load(engine, s.conversation, visitor) if s.get("conversation") else (None, [])
@@ -88,6 +88,34 @@ def updates():
 
 
 updates()
+
+
+def payment_approvals():
+    """AP2 sandbox: a paid request's payment waits for the guest's own decision here, never the model's."""
+    if not s.get("conversation"):
+        return
+    for m in ap2_sandbox.awaiting(engine, s.conversation):
+        with st.container(border=True):
+            st.markdown(f"**Payment request {m.id}** · ${float(m.total_usd):.2f} to {ap2_sandbox.MERCHANT}")
+            note = f"For booking request {m.request_id}. {ap2_sandbox.SANDBOX_NOTE}"
+            st.caption(note + " Staff confirm the booking after you approve.")
+            approve, decline = st.columns(2)
+            for col, ok, label in ((approve, True, "Approve payment (sandbox)"), (decline, False, "Decline")):
+                if col.button(label, key=f"pay-{m.id}-{ok}", type="primary" if ok else "secondary"):
+                    try:
+                        done = ap2_sandbox.decide(engine, m.id, s.conversation, ok)
+                        name = agui.APPROVAL_GRANTED if ok else agui.APPROVAL_DECLINED
+                        text = (f"Payment {m.id} {'approved' if ok else 'declined'} (sandbox: no real money). "
+                                + ("The activities desk will confirm the booking." if ok else ""))  # fmt: skip
+                        chats.add_message(engine, s.conversation, "notice", text.strip(),
+                                          {"events": [agui.custom_event(name, done)]})  # fmt: skip
+                    except ap2_sandbox.MandateError as exc:
+                        st.warning(str(exc), icon=":material/payments:")
+                        continue
+                    st.rerun()
+
+
+payment_approvals()
 
 
 def answer(message: str):
@@ -169,6 +197,7 @@ def _answer(message: str, trace):
             "sources": turn.sources,
             "requests": turn.requests,
             "steps": [vars(x) for x in turn.steps],
+            "events": turn.agui.events,  # the run as AG-UI events (docs/AGUI_EVENTS.md)
             "seconds": round(turn.seconds, 2),
             "calls": turn.usage["calls"],
             "next": suggest.after(turn, {m["content"] for m in msgs} | {message}),

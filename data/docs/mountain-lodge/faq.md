@@ -18,4 +18,4 @@ The stargazing walk is for ages 8 and up and runs on clear nights only. We cance
 The outdoor hot tub is open 16:00 to 22:00, ages 16 and up.
 
 ## Dogs
-Dogs are welcome in cabin rooms only, up to 2 per room.
+Dogs of any size are welcome, up to 2 per room. Fees and the full pet rules are in the hotel's pet policy: ask the concierge or the front desk.

@@ -197,3 +197,28 @@ def test_staff_sees_the_traces_tab(app, monkeypatch):
     assert not at.exception
     assert [t.label for t in at.tabs][-1] == "Traces"
     assert any(m.label == "Requests" for m in at.metric)
+
+
+def test_paid_request_shows_a_payment_approval_and_the_timeline_comes_from_agui_events(app, engine, monkeypatch):
+    def books_the_spa(message, ctx, history=None, client=None, on_step=None, turn=None, room=""):
+        turn.agui.run_started(message)
+        ctx.last_user_message = "yes"
+        args = {"activity_id": "BR-20261102-spa", "party_size": 1, "guest_confirmed": True, "stay_ref": "", "note": ""}
+        result = tools.create_booking_request(ctx, **args)
+        turn.requests.append(result["request_id"])
+        turn.agui.tool("create_booking_request", args, {"status": "PENDING"}, 0)
+        turn.agui.custom("human_approval_requested", result["payment"])
+        turn.answer = "I've sent the request; please approve the payment below."
+        turn.agui.text(turn.answer)
+        turn.agui.finished()
+        yield turn.answer
+
+    monkeypatch.setattr(agent, "respond", books_the_spa)
+    at = app("pages/concierge.py")
+    at.chat_input[0].set_value("Book the spa for me").run()
+    assert any(b.label == "Approve payment (sandbox)" for b in at.button)
+    expander = next(e for e in at.expander if e.label.startswith("Steps"))
+    assert expander  # the step timeline is rebuilt from the stored AG-UI events
+    next(b for b in at.button if b.label == "Approve payment (sandbox)").click().run()
+    assert any("approved (sandbox: no real money)" in s.value for s in at.success)
+    assert not any(b.label == "Approve payment (sandbox)" for b in at.button)

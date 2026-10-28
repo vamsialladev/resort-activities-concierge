@@ -22,11 +22,11 @@ Email <vamsialla.dev@gmail.com> with steps to reproduce. Please don't open a pub
 | # | Risk | How it's handled |
 |---|---|---|
 | LLM01 | Prompt injection | Shared input check (hotel-ai-platform): planted sentences cut out, nothing-but-an-attack blocked; passages quarantined (this app's patterns plus the shared ones); tool results and conversation are data; consent checked in code; 7 injection cases in the eval; red-team suite in CI ([docs/RED_TEAM.md](docs/RED_TEAM.md)) |
-| LLM02 | Sensitive information disclosure | Stay lookup needs reference + last name; stored text redacted; no names in analytics |
+| LLM02 | Sensitive information disclosure | Stay lookup needs reference + last name; stored text redacted; no names in analytics; staff-only hotel documents are left out for the guest role on the MCP server (found by connecting as a guest) |
 | LLM03 | Supply chain | Pinned dependencies, pip-audit, Dependabot, gitleaks; the embedding model is a pinned public model (BAAI/bge-small-en-v1.5) |
 | LLM04 | Data and model poisoning | The FAQ is the repo's own Markdown, reviewed in PRs; one planted instruction is kept on purpose as a test |
 | LLM05 | Improper output handling | Answers are rendered as Markdown text, never executed; tool arguments are schema-checked (`strict`) and validated again in code |
-| LLM06 | Excessive agency | Five tools, one of which writes, and only a `PENDING` request; staff decide |
+| LLM06 | Excessive agency | Seven tools; one writes, and only a `PENDING` request; staff decide. AP2 sandbox payments: the amount comes from the database, only the guest's button authorises, $300 a day per conversation, staff can't approve a paid request first (11 red-team cases). MCP as the guest role (the server's RBAC applies); the A2A hand-off sends no name or room and gets no draft back |
 | LLM07 | System prompt leakage | No secrets in prompts; the prompt contains only rules, the date and the property |
 | LLM08 | Vector and embedding weaknesses | Embeddings are computed in-process from the repo's documents; searches are filtered by property; no shared vector store |
 | LLM09 | Misinformation | Times, ages and prices come from tool results; policy answers cite their passage; "I don't know" for gaps, logged as unanswered for staff |
