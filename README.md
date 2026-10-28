@@ -14,6 +14,11 @@ and the resort's rules. It can send a booking request, and a person on staff app
 > [hotel-ai-discovery](https://github.com/vamsialladev/hotel-ai-discovery).
 
 <!-- DEMO-VIDEO -->
+<!-- AI-NARRATED-DEMO:START -->
+<a href="https://vamsialla.com/projects/resort-activities-concierge.html#demo"><img src="docs/video/demo-ai-voice.jpg" alt="Demo video, AI-narrated: the schedule filtered for kids, a cited answer about tomorrow morning, a booking request sent only after the guest says yes and left pending, and the free-massage trick refused" width="720"></a>
+
+**Demo video (1:30, AI-narrated):** [watch it with sound on vamsialla.com](https://vamsialla.com/projects/resort-activities-concierge.html#demo) (GitHub can't play MP4 files from a repo) · [download the MP4](docs/video/demo-ai-voice.mp4) · captions burned in ([text](docs/video/demo-ai-voice.srt)). The narrator is an AI voice (Kokoro); my own-voice version will replace it.
+<!-- AI-NARRATED-DEMO:END -->
 
 **Try it live:** not deployed yet. It needs a Streamlit Community Cloud app with three secrets, which I add
 myself. It runs locally in a few minutes: [Run locally](#run-locally).

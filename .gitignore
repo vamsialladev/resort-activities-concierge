@@ -12,7 +12,10 @@ coverage.xml
 data/*.db
 data/*.db-*
 logs/
-docs/video/
+docs/video/*
+!docs/video/demo-ai-voice.mp4
+!docs/video/demo-ai-voice.jpg
+!docs/video/demo-ai-voice.srt
 .claude/
 secrets/
 .cache/

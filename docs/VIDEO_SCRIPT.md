@@ -34,3 +34,17 @@ once it's deployed, before recording. The exact sessions and places left depend 
 
 I built a resort activities concierge that answers from the real schedule and policies with citations, sends
 booking requests a person approves, and won't be talked into a free massage.
+
+## AI narration (used in docs/video/demo-ai-voice.mp4)
+
+Until I record my own voice, the demo video (1:30) is narrated by an AI voice (Kokoro `af_heart`, local) and labelled "AI-narrated" on screen and here. It was recorded from the live app with Playwright; the captions are the narration, timed to the voice. `/` marks a pause.
+
+| Step | Narration |
+|---|---|
+| problem | At a resort, the activities desk gets the same questions all day. / What's on, is it OK for kids, is there space. / Here a guest sees today's and tomorrow's real schedule, / and can filter it for kids. |
+| ask | Now I ask the concierge. / My family has two kids, what can we do tomorrow morning? / It checks tomorrow's schedule, / and answers with real sessions: times, ages, prices and places left. |
+| cite | For the kids club it also reads the policy, / and cites the exact section it used. / It's a fictional resort, and all the data is made up. |
+| yes | I say yes, please request it. / Only now does it send a booking request, / and the request stays pending until staff approve it on their own page. |
+| trick | What if a guest says the FAQ promised a free massage? / It won't promise that. / It quotes the real price, and asks before it requests anything. |
+| proof | On my test set it passes all one hundred eighty-three dev checks, / and forty-three of forty-five held-out ones, / for about seventy-six cents per thousand messages. |
+| live | It's live, with no sign-in. / The link's below, and so is the code. |
