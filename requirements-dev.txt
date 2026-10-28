@@ -2,5 +2,5 @@
 a2a-sdk[http-server]~=1.2.3  # tests run an in-process A2A server
 pytest~=9.1
 pytest-cov~=7.1
-ruff==0.17.0
+ruff==0.17.2
 pip-audit~=2.9
