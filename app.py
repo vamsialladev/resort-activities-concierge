@@ -10,10 +10,29 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
 import streamlit as st
+from hotelplatform import bots, jsonlog
 
-from concierge import chats, ui
+from concierge import chats, config, ops, ui
 
 st.set_page_config(page_title="Resort Activities Concierge", page_icon="🌴", layout="wide")
+
+if bots.is_bot(st.query_params):  # streamlit-keep-awake: nothing asked, nothing logged, the database stays asleep
+    st.caption("Awake.")
+    st.stop()
+
+
+@st.cache_resource(show_spinner=False)
+def startup_log() -> bool:
+    """Once per server start: the JSON lines every hotel app writes (version, settings set/missing, dependencies)."""
+    ops.configure_logs()
+    jsonlog.app_start(app_version=ops.APP_VERSION)
+    jsonlog.config_loaded(["ANTHROPIC_API_KEY", "DATABASE_URL", "ADMIN_PASSWORD", "STAFF_PASSWORD"],
+                          model=config.LLM_MODEL)  # fmt: skip
+    jsonlog.dependency_health(ops.dependencies())
+    return True
+
+
+startup_log()
 
 
 def shared_view(token: str):
@@ -47,9 +66,21 @@ pages = [
         default=True,
     ),
     st.Page("pages/concierge.py", title="Concierge chat", icon=":material/chat:"),
-    st.Page("pages/staff.py", title="Staff", icon=":material/badge:"),
     st.Page("pages/about.py", title="About this project", icon=":material/info:"),
 ]
+# The Staff page is this app's Admin page: absent without ADMIN_PASSWORD (or STAFF_PASSWORD), out of the menu until
+# staff sign in at /staff.
+if config.staff_password():
+    gate = st.session_state.get("staff_gate")
+    pages.append(
+        st.Page(
+            "pages/staff.py",
+            title="Staff",
+            icon=":material/badge:",
+            url_path="staff",
+            visibility="visible" if gate and gate.unlocked else "hidden",
+        )
+    )
 nav = st.navigation(pages)
 ui.sidebar()
 nav.run()

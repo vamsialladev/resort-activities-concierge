@@ -3,8 +3,9 @@
 import time
 
 import streamlit as st
+from hotelplatform import admin_gate, admin_ui
 
-from concierge import analytics, config, qr, staff, ui
+from concierge import analytics, config, ops, qr, staff, ui
 
 ctx = ui.context()
 engine = ui.engine()
@@ -14,28 +15,36 @@ LOCK_AFTER_S = 30 * 60
 st.title("🗂️ Staff")
 if not config.staff_password():
     st.info(
-        "Staff sign-in isn't set up on this deployment (STAFF_PASSWORD). The README shows the staff side.",
+        "Staff sign-in isn't set up on this deployment (ADMIN_PASSWORD). The README shows the staff side.",
         icon=":material/lock:",
     )
     st.stop()
-if s.get("staff_at") and time.time() - s.staff_at > LOCK_AFTER_S:
-    s.pop("staff_at")
+# The shared gate (hotel-ai-platform): 5 wrong tries lock it for 15 minutes, counted per browser session and per
+# server process, and 30 minutes without activity signs staff out.
+gate = s.setdefault("staff_gate", admin_gate.SessionGate())
+if gate.unlocked and not admin_gate.still_signed_in(gate, idle_s=LOCK_AFTER_S):
     st.info("Locked after 30 minutes. Please sign in again.", icon=":material/lock_clock:")
-if not s.get("staff_at"):
+if not gate.unlocked:
     with st.form("signin"):
         password = st.text_input("Staff password", type="password")
         if st.form_submit_button("Sign in"):
-            if staff.check_password(password):
-                s.staff_at = time.time()
+            ok, problem = admin_gate.attempt(gate, password, config.staff_password(), scope="staff")
+            if ok:
                 st.rerun()
-            st.error("That password didn't work.")
+            time.sleep(config.GUESS_DELAY_S)  # slows guessing
+            st.error(problem if problem != admin_gate.WRONG else "That password didn't work.")
     st.stop()
 if st.sidebar.button("Sign out", icon=":material/logout:"):
-    s.pop("staff_at", None)
+    admin_gate.sign_out(gate)
     st.rerun()
 
 prop = ctx["property"]
-pending_tab, analytics_tab, qr_tab = st.tabs(["Pending requests", "Analytics", "Room QR codes"])
+pending_tab, analytics_tab, qr_tab, traces_tab = st.tabs(["Pending requests", "Analytics", "Room QR codes", "Traces"])
+
+with traces_tab:  # the shared ops view: every guest message's trace as a waterfall, errors, cost, guardrail blocks
+    st.caption('Paste a guest\'s "Reference: ..." into Trace reference to find their message.')
+    admin_ui.render(ops.store(), app_title="Concierge", version=ops.running_version(),
+                    dependencies=ops.dependencies, require_gate=False, title="Traces", **ops.caps())  # fmt: skip
 
 with pending_tab:
     pending = [r for r in staff.requests(engine) if r["property"] == prop]

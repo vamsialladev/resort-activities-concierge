@@ -3,6 +3,20 @@
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [1.1.0] - 2026-10-25
+### Added
+- Shared guardrails, tracing and ops log from [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform)
+  v0.1.2 (`src/concierge/ops.py`, decision 11): input check before the rewrite and the model, output check on the
+  answer against the turn's tool results, one trace per message (rewrite, model turns, tool calls), "Reference: ..."
+  on errors, Staff → Traces, JSON startup logs, privacy note in the sidebar.
+- Red-team suite in CI (`scripts/run_redteam.py`, docs/RED_TEAM.md) and a CycloneDX SBOM artifact.
+### Changed
+- Staff page: `ADMIN_PASSWORD` (STAFF_PASSWORD still accepted), shared 5-try lockout, hidden until signed in, absent
+  without a password.
+- FAQ quarantine also uses the shared patterns (red-team rt31).
+- `?source=keepawake` visits stop before the database is touched.
+
 ## [1.0.0] - 2026-10-24
 
 ### Added

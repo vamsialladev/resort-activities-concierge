@@ -1,6 +1,6 @@
 [project]
 name = "resort-activities-concierge"
-version = "1.0.0"
+version = "1.1.0"
 description = "Stage 6: a resort activities concierge with a schedule, an agent that sends booking requests, and a staff side"
 requires-python = ">=3.12"
 license = { text = "MIT" }

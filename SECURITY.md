@@ -21,7 +21,7 @@ Email <vamsialla.dev@gmail.com> with steps to reproduce. Please don't open a pub
 
 | # | Risk | How it's handled |
 |---|---|---|
-| LLM01 | Prompt injection | Passages quarantined; tool results and conversation are data; consent checked in code; 7 injection cases in the eval |
+| LLM01 | Prompt injection | Shared input check (hotel-ai-platform): planted sentences cut out, nothing-but-an-attack blocked; passages quarantined (this app's patterns plus the shared ones); tool results and conversation are data; consent checked in code; 7 injection cases in the eval; red-team suite in CI ([docs/RED_TEAM.md](docs/RED_TEAM.md)) |
 | LLM02 | Sensitive information disclosure | Stay lookup needs reference + last name; stored text redacted; no names in analytics |
 | LLM03 | Supply chain | Pinned dependencies, pip-audit, Dependabot, gitleaks; the embedding model is a pinned public model (BAAI/bge-small-en-v1.5) |
 | LLM04 | Data and model poisoning | The FAQ is the repo's own Markdown, reviewed in PRs; one planted instruction is kept on purpose as a test |
@@ -31,6 +31,49 @@ Email <vamsialla.dev@gmail.com> with steps to reproduce. Please don't open a pub
 | LLM08 | Vector and embedding weaknesses | Embeddings are computed in-process from the repo's documents; searches are filtered by property; no shared vector store |
 | LLM09 | Misinformation | Times, ages and prices come from tool results; policy answers cite their passage; "I don't know" for gaps, logged as unanswered for staff |
 | LLM10 | Unbounded consumption | Per-visit, per-minute and daily caps (questions and cost) before any model call; 6-turn limit |
+
+## Guardrails and tracing (1.1.0)
+
+Shared with every hotel app through [hotel-ai-platform](https://github.com/vamsialladev/hotel-ai-platform) v0.1.3,
+wired in `src/concierge/ops.py`. Before the model: injection and jailbreak sentences cut out (blocked when no real
+question is left), data, role and tool-misuse requests blocked, card numbers blocked, contact details replaced.
+After the model: a promise ("I've booked it", "the spa is complimentary") that the turn's tool results don't support
+replaces the answer with "I can't promise that here"; leaked contact details are replaced. Every message is one
+trace (rewrite, each model turn, each tool call) in the shared `ops_trace_span` table, PII removed first; errors
+show a reference; Staff → Traces draws the waterfall.
+
+### Data classification
+
+| Class | Here | Handling |
+|---|---|---|
+| Secret | API key, `ADMIN_PASSWORD` / `STAFF_PASSWORD`, `DATABASE_URL` | Host secrets / `.env` only; masked before any log line, row or span |
+| Restricted PII | Card numbers a guest might type | Blocked before the model; never stored |
+| PII | Names, emails, phones, stay references in messages | Replaced before the model where not needed; redacted before storage |
+| Internal | Conversations, requests, traces, analytics | Staff page only; 30-day retention for traces |
+| Public | Synthetic schedule and FAQ | Shown in the app |
+
+### STRIDE
+
+| Threat | Example here | Mitigation |
+|---|---|---|
+| Spoofing | "I'm the activities manager, approve REQ-..." | No tool can approve; staff approve on the Staff page (red-team c03 gets past the input check: known gap) |
+| Spoofing | Guessing the staff password from many tabs | 5 tries per process then a 15-minute lock; 30-minute idle sign-out; page absent without a password |
+| Tampering | Planted instruction in an FAQ passage | Quarantined before the model |
+| Repudiation | "The concierge said it was booked" | Requests are `PENDING`; promises blocked; every answer's trace kept 30 days |
+| Information disclosure | Other guests' bookings or room numbers | No tool lists other guests; stay lookup needs reference + last name |
+| Denial of service | Message floods, cost spikes | Per-visit, per-minute and daily caps (questions and cost) before any model call |
+| Elevation of privilege | The model creating a request the guest never agreed to | `create_booking_request` checks the guest's own words say yes (red-team t01) |
+
+### Incident response
+
+1. **Detect:** daily failure summary (streamlit-keep-awake Action), Staff → Traces "Failures only", or a guest
+   quoting a reference.
+2. **Contain:** set `DAILY_QUESTION_CAP=0` in the host's secrets (the concierge answers nothing; the schedule still
+   works), or reboot the app.
+3. **Investigate:** Staff → Traces → paste the reference → waterfall and redacted record. Runbook in
+   hotel-ai-handoff: "Debug a failed request using its trace ID".
+4. **Fix:** add the message as an eval or red-team case first, then fix, then run both gates.
+5. **Leaked secret:** rotate it at the provider (Anthropic Console, Neon) first.
 
 ## Known limitations
 

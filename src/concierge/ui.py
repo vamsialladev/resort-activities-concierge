@@ -78,6 +78,10 @@ def sidebar():
         st.link_button("GitHub", config.REPO_URL, icon=":material/code:")
         st.link_button("Portfolio", config.PORTFOLIO_URL, icon=":material/person:")
         st.caption("Stage 6 of a simulated client engagement. Synthetic data: no real guests, rooms or prices.")
+        st.caption(
+            "Privacy: questions, answers and each step's trace are logged to improve the service, with personal "
+            "details removed first, and deleted after 30 days."
+        )
 
 
 def base_url() -> str:
