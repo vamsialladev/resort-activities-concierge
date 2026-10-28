@@ -20,8 +20,9 @@ and the resort's rules. It can send a booking request, and a person on staff app
 **Demo video (1:30, AI-narrated):** [watch it with sound on vamsialla.com](https://vamsialla.com/projects/resort-activities-concierge.html#demo) (GitHub can't play MP4 files from a repo) · [download the MP4](docs/video/demo-ai-voice.mp4) · captions burned in ([text](docs/video/demo-ai-voice.srt)). The narrator is an AI voice (Kokoro); my own-voice version will replace it.
 <!-- AI-NARRATED-DEMO:END -->
 
-**Try it live:** not deployed yet. It needs a Streamlit Community Cloud app with three secrets, which I add
-myself. It runs locally in a few minutes: [Run locally](#run-locally).
+**Try it live:** <https://resort-activities-concierge.streamlit.app> (free hosting: may take ~30 s to wake).
+Synthetic schedule and guests, no sign-in; capped at 25 messages a visit, 6 a minute, and 400 messages and $1.50 a
+day across everyone (counted in the database). It also runs locally in a few minutes: [Run locally](#run-locally).
 
 ## At a glance
 
