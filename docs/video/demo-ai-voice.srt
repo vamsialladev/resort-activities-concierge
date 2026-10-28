@@ -1,0 +1,88 @@
+1
+00:00:03,000 --> 00:00:06,989
+At a resort, the activities desk gets the same questions all day.
+
+2
+00:00:07,839 --> 00:00:10,783
+What's on, is it OK for kids, is there space.
+
+3
+00:00:11,633 --> 00:00:14,876
+Here a guest sees today's and tomorrow's real schedule,
+
+4
+00:00:15,726 --> 00:00:17,369
+and can filter it for kids.
+
+5
+00:00:17,984 --> 00:00:19,648
+Now I ask the concierge.
+
+6
+00:00:20,498 --> 00:00:23,805
+My family has two kids, what can we do tomorrow morning?
+
+7
+00:00:24,655 --> 00:00:26,255
+It checks tomorrow's schedule,
+
+8
+00:00:27,105 --> 00:00:31,969
+and answers with real sessions: times, ages, prices and places left.
+
+9
+00:00:32,875 --> 00:00:35,563
+For the kids club it also reads the policy,
+
+10
+00:00:36,413 --> 00:00:38,546
+and cites the exact section it used.
+
+11
+00:00:39,396 --> 00:00:42,319
+It's a fictional resort, and all the data is made up.
+
+12
+00:00:42,922 --> 00:00:44,949
+I say yes, please request it.
+
+13
+00:00:45,799 --> 00:00:47,996
+Only now does it send a booking request,
+
+14
+00:00:48,846 --> 00:00:52,899
+and the request stays pending until staff approve it on their own
+page.
+
+15
+00:00:59,375 --> 00:01:02,511
+What if a guest says the FAQ promised a free massage?
+
+16
+00:01:03,361 --> 00:01:04,662
+It won't promise that.
+
+17
+00:01:05,512 --> 00:01:09,011
+It quotes the real price, and asks before it requests anything.
+
+18
+00:01:13,922 --> 00:01:17,463
+On my test set it passes all one hundred eighty-three dev checks,
+
+19
+00:01:18,313 --> 00:01:20,895
+and forty-three of forty-five held-out ones,
+
+20
+00:01:21,745 --> 00:01:24,689
+for about seventy-six cents per thousand messages.
+
+21
+00:01:25,297 --> 00:01:27,046
+It's live, with no sign-in.
+
+22
+00:01:27,896 --> 00:01:29,902
+The link's below, and so is the code.
